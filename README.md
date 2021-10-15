@@ -121,9 +121,9 @@ When the Data Server is executed within Node.js, you have full access to all its
 
 However, when using a `queryInclude` or the preview system from Drupal, the Data Server needs each query to be stored in its own file, inside a directory defined by the `queryDir` / `--query-dir` option.
 
-Each query is a file named `${queryId}.js`, and it must export a default function which receives two arguments:
+Each query is a file named `${queryId}.js`, and it must export a `queryHandler` function which receives an object with two objects:
 
-- `storeData`: the object that holds all data. Being a shared object, any operation that could alter it must be executed on a local copy (i.e.- using `slice()` or similar functions)
+- `data`: the object that holds all data. Being a shared object, any operation that could alter it must be executed on a local copy (i.e.- using `slice()` or similar functions)
 - `args`: object with arguments used by that query
 
 It must return an object with two keys:
@@ -134,9 +134,9 @@ It must return an object with two keys:
 Example: find all contents by title passed in "q" argument
 
 ```javascript
-const findContentsByTitle = (storeData, args) => {
+const findContentsByTitle = ({data, args}) => {
   const q = args.q?.toLowerCase();
-  const results = storeData._json.main
+  const results = data._json.main
     .filter(
       node =>
         node.data?.content?.title &&
@@ -150,14 +150,14 @@ const findContentsByTitle = (storeData, args) => {
   return { results, cacheable: true };
 };
 
-module.exports = findContentByTitle;
+module.exports.queryHandler = findContentByTitle;
 ```
 
 Example: list latest contents. Note the use of slice() to make a copy of the data and avoid `sort()` altering the original object.
 
 ```javascript
-const latestContents = (storeData, args = {}) => {
-  const results = storeData._json.main
+const latestContents = ({data,args}) => {
+  const results = data._json.main
     .slice()
     .sort((a, b) => b.changed - a.changed)
     .slice(0, args.limit || 10)
@@ -169,7 +169,7 @@ const latestContents = (storeData, args = {}) => {
   return { results, cacheable: false };
 };
 
-module.exports = latestContents;
+module.exports.queryHandler = latestContents;
 ```
 
 The Data Server uses internally a `queryRunner` to execute those queries, encapsulating the query function results into an object with the following shape:
